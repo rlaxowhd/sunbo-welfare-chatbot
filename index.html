@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SB선보 2026 복지가이드 AI 음성 챗봇</title>
+  
+  <!-- FontAwesome Icons & Pretendard Font -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  
+  <!-- Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <div class="brand" onclick="switchView('chat')">
+      <div class="brand-logo">SB</div>
+      <div class="brand-text">
+        <h1>SB선보 복지 AI 챗봇</h1>
+        <span>2026 임직원 복지가이드북 음성 상담 서비스</span>
+      </div>
+    </div>
+    <div class="nav-actions">
+      <button id="nav-chat-btn" class="nav-btn active">
+        <i class="fas fa-comments"></i> 챗봇 상담
+      </button>
+      <button id="admin-nav-btn" class="nav-btn" style="display: none;">
+        <i class="fas fa-chart-line"></i> 관리자 분석
+      </button>
+      <div id="user-profile-badge" class="user-badge">
+        <i class="fas fa-user-circle"></i>
+        <span id="user-display-name">임직원</span>
+        <button id="logout-btn" class="sound-repeat-btn" title="로그아웃"><i class="fas fa-sign-out-alt"></i></button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Wrapper -->
+  <main class="main-wrapper">
+
+    <!-- 1. CHATBOT VIEW -->
+    <section id="chat-view">
+      <div class="chat-header">
+        <div class="chat-header-title">
+          <i class="fas fa-headset"></i>
+          <div>
+            <h2>복지 안내 음성 비서</h2>
+            <p>마이크를 누르고 말씀하시거나 키보드로 질문을 입력하세요.</p>
+          </div>
+        </div>
+        <div class="chat-controls">
+          <button id="tts-toggle-btn" class="nav-btn btn-primary" title="음성 답변 토글">
+            <i class="fas fa-volume-up"></i> 음성출력 켜짐
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Category Chips -->
+      <div class="quick-chips-bar">
+        <button class="quick-chip" data-query="의료비 지원 대상과 한도가 어떻게 되나요?">🏥 의료비 지원</button>
+        <button class="quick-chip" data-query="자녀 대학 등록금 지원 얼마인가요?">🎓 자녀 등록금</button>
+        <button class="quick-chip" data-query="자녀 초중고 대학 입학 축하금은 얼마인가요?">🎒 입학 축하금</button>
+        <button class="quick-chip" data-query="결혼 및 출산 경조금과 휴가 일수 알려줘">💍 결혼·출산 경조</button>
+        <button class="quick-chip" data-query="가정의 날 조기퇴근 시간과 반반차 제도">⏰ 워라밸·가정의날</button>
+        <button class="quick-chip" data-query="선택적 복지수당 한도와 사용처">💳 복지수당(100만)</button>
+        <button class="quick-chip" data-query="휴양사택 및 콘도 리조트 이용 방법">🏖️ 리조트·휴양사택</button>
+        <button class="quick-chip" data-query="주택마련 축하금과 사내대출 조건">🏠 주택자금대출</button>
+        <button class="quick-chip" data-query="금연 펀드 가입과 성공 혜택">🚭 금연 펀드</button>
+      </div>
+
+      <!-- Messages Area -->
+      <div class="chat-messages" id="chat-messages">
+        <!-- Initial Welcome Message -->
+        <div class="message bot-message">
+          <div class="message-bubble">
+            <span class="badge category-badge">안내</span>
+            <div class="message-content">
+              반갑습니다! <strong>SB선보 2026 복지가이드 AI 챗봇</strong>입니다.<br><br>
+              의료비, 학자금, 경조금, 워라밸(가정의 날/반반차), 복지수당, 휴양사택, 사내대출 등 궁금한 복지제도를 음성 또는 텍스트로 자유롭게 질문해 주세요.
+            </div>
+            <div class="message-meta">
+              <span class="time">지금</span>
+              <button class="sound-repeat-btn" onclick="speakText('반갑습니다! SB선보 2026 복지가이드 AI 챗봇입니다. 의료비, 학자금, 경조금, 복지수당 등 궁금하신 내용을 편하게 질문해 주세요.')">
+                <i class="fas fa-volume-up"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Typing Indicator -->
+      <div class="typing-box" id="typing-indicator">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span style="font-size: 11px; color: #64748b; margin-left: 6px;">복지 가이드북 확인 중...</span>
+      </div>
+
+      <!-- Input Area -->
+      <div class="chat-input-area">
+        <button id="mic-btn" class="mic-action-btn" title="음성으로 질문하기">
+          <i class="fas fa-microphone"></i>
+        </button>
+        <input type="text" id="chat-input" class="chat-input" placeholder="복지 혜택에 대해 음성 또는 키보드로 질문하세요 (예: 본인부담 의료비 한도)">
+        <button id="send-btn" class="send-action-btn" title="전송">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
+    </section>
+
+    <!-- 2. ADMIN ANALYTICS VIEW -->
+    <section id="admin-view">
+      <div class="admin-header">
+        <h2><i class="fas fa-chart-pie"></i> 관리자 복지 상담 분석 대시보드</h2>
+        <p>임직원들의 로그인 현황 및 주요 질문 유형, 카테고리별 관심도를 실시간 분석합니다.</p>
+      </div>
+
+      <!-- Metrics Row -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-icon metric-blue"><i class="fas fa-comments"></i></div>
+          <div class="metric-info">
+            <h3>누적 상담 질문 수</h3>
+            <div class="value" id="metric-total-queries">0</div>
+          </div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-icon metric-green"><i class="fas fa-users"></i></div>
+          <div class="metric-info">
+            <h3>접속 임직원 수</h3>
+            <div class="value" id="metric-total-users">0</div>
+          </div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-icon metric-orange"><i class="fas fa-fire"></i></div>
+          <div class="metric-info">
+            <h3>최다 관심 복지 분야</h3>
+            <div class="value" id="metric-top-category">-</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analytics Breakdown & Recent Logs -->
+      <div class="admin-analytics-section">
+        <!-- Category Statistics -->
+        <div class="analytics-card">
+          <h3><i class="fas fa-chart-bar"></i> 복지 항목별 질문 비중</h3>
+          <div id="category-stats-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Real-time Query Logs Table -->
+        <div class="analytics-card">
+          <h3><i class="fas fa-list-alt"></i> 실시간 임직원 질문 로그</h3>
+          <div class="table-responsive">
+            <table class="logs-table">
+              <thead>
+                <tr>
+                  <th>일시</th>
+                  <th>사용자</th>
+                  <th>카테고리</th>
+                  <th>질문 내용</th>
+                  <th>답변 요약</th>
+                </tr>
+              </thead>
+              <tbody id="logs-table-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Login Modal -->
+  <div id="auth-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="brand-logo" style="margin: 0 auto 10px; width: 44px; height: 44px;">SB</div>
+        <h3>선보가족 로그인</h3>
+        <p>복지 안내 챗봇 이용 및 관리자 페이지 접속을 위해 로그인하세요.</p>
+      </div>
+
+      <form id="login-form">
+        <div class="role-selector">
+          <div class="role-radio">
+            <input type="radio" id="role-user" name="login-role" value="user" checked>
+            <label for="role-user"><i class="fas fa-user"></i> 일반 임직원</label>
+          </div>
+          <div class="role-radio">
+            <input type="radio" id="role-admin" name="login-role" value="admin">
+            <label for="role-admin"><i class="fas fa-user-shield"></i> 인사/총무 관리자</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="login-email">이메일 계정</label>
+          <input type="email" id="login-email" class="form-control" placeholder="example@sunbo.co.kr" value="employee@sunbo.co.kr" required>
+        </div>
+
+        <div class="form-group">
+          <label for="login-password">비밀번호</label>
+          <input type="password" id="login-password" class="form-control" placeholder="••••••••" value="123456">
+        </div>
+
+        <button type="submit" class="btn-primary">로그인</button>
+      </form>
+
+      <div class="quick-login-row">
+        <button id="guest-login-btn" class="btn-secondary"><i class="fas fa-user"></i> 임직원 빠른 접속</button>
+        <button id="admin-quick-btn" class="btn-secondary"><i class="fas fa-shield-alt"></i> 관리자 빠른 접속</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-msg"></div>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/welfare_data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
